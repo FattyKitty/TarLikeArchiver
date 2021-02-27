@@ -1,3 +1,4 @@
+
 #include "ArchiverHeader.h"
 
 int main(int argc, char *argv[])
@@ -6,7 +7,7 @@ int main(int argc, char *argv[])
     if (strcmp(argv[1], "-a")==0)
     {
         printf("Archiving\n");
-        Packing(argv[2], argv[3]);
+        Packing(argv[2], argv[3], 0);
     }
     else if (strcmp(argv[1], "-d")==0)
     {
