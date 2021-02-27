@@ -2,7 +2,9 @@
 
 int Packing(char *FilePath, char *ArchivePath)
 {
-    int OpenArchive=open(ArchivePath, O_CREAT|O_WRONLY, ALLOW);
+    int OpenArchive=open(ArchivePath, O_CREAT|O_WRONLY|O_APPEND, ALLOW);
+
+
     int OpenFile=open(FilePath, O_RDONLY);
 
     if (OpenArchive==-1)
@@ -36,10 +38,11 @@ int Packing(char *FilePath, char *ArchivePath)
     while(size)
     {
         read(OpenFile, &buff, sizeof(char));
-        printf("%c", buff);
         write(OpenArchive, &buff, sizeof(char));
         --size;
     }
+    close(OpenFile);
+    close(OpenArchive);
     remove(FilePath);
     return 0;
 }
@@ -55,20 +58,23 @@ int Unpacking(char *ArchivePath)
         return ArchiveOpen;
     }
 
-    int size;
+    int size; //possible to remove 
     char FileName[MAXFILENAME];
     char buff;
 
-    read(ArchiveOpen, FileName, MAXFILENAME);
-
-    read(ArchiveOpen, &size, sizeof(int));
-
-    int OpenNewFile=open(FileName, O_CREAT|O_WRONLY, ALLOW); 
-    while(size)
+    while(read(ArchiveOpen, FileName, MAXFILENAME))
     {
-        read(ArchiveOpen, &buff, sizeof(char));
-        write(OpenNewFile, &buff, sizeof(char));
-        --size;
+        read(ArchiveOpen, &size, sizeof(int));
+
+        int OpenNewFile=open(FileName, O_CREAT|O_WRONLY, ALLOW); 
+        while(size)
+        {
+            read(ArchiveOpen, &buff, sizeof(char));
+            write(OpenNewFile, &buff, sizeof(char));
+            --size;
+        }
+        close(OpenNewFile);
+        memset(FileName, 0, MAXFILENAME);
     }
     remove(ArchivePath);
     return 0;

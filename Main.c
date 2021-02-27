@@ -2,7 +2,6 @@
 
 int main(int argc, char *argv[])
 {
-    int FileOpen=open(argv[2], O_RDONLY);
 
     if (strcmp(argv[1], "-a")==0)
     {
