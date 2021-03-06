@@ -1,0 +1,4 @@
+all:
+	gcc ArchiverFunctions.c Main.c -o ArchiverObj
+leaks:
+	gcc ArchiverFunctions.c Main.c -o ArchiverObj -fsanitize=address

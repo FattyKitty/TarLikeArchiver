@@ -1,6 +1,6 @@
 #include "ArchiverHeader.h"
 
-int Packing(char *FilePath, char *ArchiverPath, int depth)
+int PackArchive(char *FilePath, char *ArchiverPath, int depth)
 {    
     int OpenArchive=open(ArchiverPath, O_CREAT|O_WRONLY|O_APPEND, ALLOW);
 
@@ -21,65 +21,31 @@ int Packing(char *FilePath, char *ArchiverPath, int depth)
     chdir(FilePath);
     struct stat type;
     struct dirent *dir_ptr=readdir(Folder);
-    int size;
     while(dir_ptr!=NULL)
     {
         if (strcmp((*dir_ptr).d_name, ".") != 0 && strcmp((*dir_ptr).d_name, "..") != 0)
         {
-            printf("%s\n", (*dir_ptr).d_name);
-            lstat((*dir_ptr).d_name, &type); 
-            if (S_ISDIR(type.st_mode))
+            lstat((*dir_ptr).d_name, &type); //getting info about content of directory
+            if (S_ISDIR(type.st_mode)) //checking for directory
             {
-                Packing("ZipTemp.zipper", (*dir_ptr).d_name, depth+1);
-                lstat("ZipTemp.zipper", &type);
-                PackFile("ZipTemp.zipper", OpenArchive, depth+1, (*dir_ptr).d_name);
-                remove("ZipTemp.zipper");
+                PackArchive((*dir_ptr).d_name, "Temp.zipper", depth+1);             //
+                PackFile("Temp.zipper", OpenArchive, depth+1, (*dir_ptr).d_name);   // packing folder + it's content
+                remove("Temp.zipper");                                              //
             }
             else
             {   
-                PackFile((*dir_ptr).d_name, OpenArchive, depth, "");
+                PackFile((*dir_ptr).d_name, OpenArchive, depth, ""); //packing file
             }
         }
         dir_ptr=readdir(Folder);
 
     }
+    chdir(".."); //getting to the upper level
     closedir(Folder);
-}
-
-int Unpacking(char *ArchivePath)
-{
-   int ArchiveOpen=open(ArchivePath, O_RDONLY);
-    
-
-    if (ArchiveOpen==-1)
-    {
-        printf("Cannot open archive down this path");
-        return ArchiveOpen;
-    }
-
-    int size;
-    int temp; 
-    char FileName[MAXFILENAME];
-    char buff;
-
-    while(read(ArchiveOpen, &temp, sizeof(int)))
-    {
-        read(ArchiveOpen, FileName, MAXFILENAME);
-        read(ArchiveOpen, &size, sizeof(int));
-        printf("File %s contains %i bytes\n", FileName, size); 
-        int OpenNewFile=open(FileName, O_CREAT|O_WRONLY, ALLOW); 
-        while(size)
-        {
-            read(ArchiveOpen, &buff, sizeof(char));
-            write(OpenNewFile, &buff, sizeof(char));
-            --size;
-        }
-        close(OpenNewFile);
-    }
-    remove(ArchivePath);
+    close(OpenArchive);
     return 0;
+    
 }
-
 
 int PackFile(char *FilePath, int OpenArchive, int depth, char *FolderName)
 {
@@ -102,9 +68,14 @@ int PackFile(char *FilePath, int OpenArchive, int depth, char *FolderName)
         return OpenArchive;
     }
 
-    write(OpenArchive, &depth, sizeof(int));
-    write(OpenArchive, FilePath, MAXFILENAME);
-    write(OpenArchive, &size, sizeof(int));
+    if (strcmp("", FolderName)==0)
+      write(OpenArchive, FilePath, MAXFILENAME);
+    else
+        write(OpenArchive, FolderName, MAXFILENAME);
+
+
+    write(OpenArchive, &depth, sizeof(int));    //infomation about how deep file was held
+    write(OpenArchive, &size, sizeof(int));     //writing information about the file
 
     char buff;
     
@@ -114,8 +85,69 @@ int PackFile(char *FilePath, int OpenArchive, int depth, char *FolderName)
         write(OpenArchive, &buff, sizeof(char));
         --size;
     }
-    printf("%s packed\n", FilePath);
     close(OpenFile);
-   //remove(FilePath);  //commented for development stage
+    return 0;
+}
+
+int UnpackFile(char *FileName, int size, int ArchiveDescr)
+{
+   int OpenNewFile=open(FileName, O_CREAT|O_WRONLY, ALLOW);     //creating file after unpacking info about it
+   char buff;
+        while(size)
+        {
+            read(ArchiveDescr, &buff, sizeof(char));
+            write(OpenNewFile, &buff, sizeof(char));
+            --size;
+        }
+        close(OpenNewFile);
+    return 0;
+}
+
+int UnpackArchive(char *ArchivePath, int depth, char *ZipFolder)
+{
+    int ArchiveOpen=open(ArchivePath, O_RDONLY);
+
+    if (ArchiveOpen==-1)
+    {
+        printf("Cannot open archive down this path");
+        return ArchiveOpen;
+    }
+
+    DIR *Folder=opendir(ZipFolder);    
+
+    if (Folder == NULL)
+    {
+        mkdir(ZipFolder, S_IRWXO|S_IRWXU|S_IRWXG);      //making folder in case it was not found or created before
+    }
+
+    closedir(Folder);
+
+    chdir(ZipFolder);
+
+    int size;
+    int depthfinder;
+    char FileName[MAXFILENAME];
+
+    while(read(ArchiveOpen, FileName, MAXFILENAME))                 //unpacking cycle
+    {
+        read(ArchiveOpen, &depthfinder, sizeof(int));
+        read(ArchiveOpen, &size, sizeof(int)); 
+        if (depthfinder==depth+1)
+        {
+            UnpackFile("Unzippertemp.zipper", size, ArchiveOpen);
+            UnpackArchive("Unzippertemp.zipper", depth+1, FileName);
+            remove("Unzippertemp.zipper");
+        }
+        else if (depth==depthfinder)
+            UnpackFile(FileName, size, ArchiveOpen);                    //unpacking files, which were laying in the root of a folder
+        else
+        {
+            printf("Error. Depth not matching!. Check archiving algorithm for possible mistakes or mistake has been made in specifiying start parameter.\n"); 
+            return -1;
+        }    
+    }
+    close(ArchiveOpen);
+    chdir("..");  //getting to the upper level
+    remove(ArchivePath);
     return 0;
 }

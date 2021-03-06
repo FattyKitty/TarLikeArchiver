@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int Packing(char *FilePath, char* ArchiverPath, int depth);
-int PackFile(char *FilePath, int OpenArchive, int depth, char *FoldeName);
-int Unpacking(char *ArchivePath);
+int PackArchive(char *FilePath, char* ArchiverPath, int depth);
+int PackFile(char *FilePath, int OpenArchive, int depth, char *FolderName);
+int UnpackFile(char *FileName, int size, int ArchiveDescr);
+int UnpackArchive(char *ArchivePath, int depth, char *ZipFolder);
