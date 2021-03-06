@@ -19,7 +19,7 @@ int Packing(char *FilePath, char *ArchiverPath, int depth)
 
 
     chdir(FilePath);
-    struct stat filesizestat;
+    struct stat type;
     struct dirent *dir_ptr=readdir(Folder);
     int size;
     while(dir_ptr!=NULL)
@@ -27,13 +27,23 @@ int Packing(char *FilePath, char *ArchiverPath, int depth)
         if (strcmp((*dir_ptr).d_name, ".") != 0 && strcmp((*dir_ptr).d_name, "..") != 0)
         {
             printf("%s\n", (*dir_ptr).d_name);
-            lstat((*dir_ptr).d_name, &filesizestat); 
-            size=filesizestat.st_size;
-            PackFile((*dir_ptr).d_name, OpenArchive, depth, size);
+            lstat((*dir_ptr).d_name, &type); 
+            if (S_ISDIR(type.st_mode))
+            {
+                Packing("ZipTemp.zipper", (*dir_ptr).d_name, depth+1);
+                lstat("ZipTemp.zipper", &type);
+                PackFile("ZipTemp.zipper", OpenArchive, depth+1, (*dir_ptr).d_name);
+                remove("ZipTemp.zipper");
+            }
+            else
+            {   
+                PackFile((*dir_ptr).d_name, OpenArchive, depth, "");
+            }
         }
         dir_ptr=readdir(Folder);
 
     }
+    closedir(Folder);
 }
 
 int Unpacking(char *ArchivePath)
@@ -47,12 +57,14 @@ int Unpacking(char *ArchivePath)
         return ArchiveOpen;
     }
 
-    int size; //possible to remove 
+    int size;
+    int temp; 
     char FileName[MAXFILENAME];
     char buff;
 
-    while(read(ArchiveOpen, FileName, MAXFILENAME))
+    while(read(ArchiveOpen, &temp, sizeof(int)))
     {
+        read(ArchiveOpen, FileName, MAXFILENAME);
         read(ArchiveOpen, &size, sizeof(int));
         printf("File %s contains %i bytes\n", FileName, size); 
         int OpenNewFile=open(FileName, O_CREAT|O_WRONLY, ALLOW); 
@@ -63,17 +75,20 @@ int Unpacking(char *ArchivePath)
             --size;
         }
         close(OpenNewFile);
-        memset(FileName, 0, MAXFILENAME);
     }
     remove(ArchivePath);
     return 0;
 }
 
 
-int PackFile(char *FilePath, int OpenArchive, int depth, int size)
+int PackFile(char *FilePath, int OpenArchive, int depth, char *FolderName)
 {
-   
+    int size=0;
     int OpenFile=open(FilePath, O_RDONLY);
+    struct stat SizeOfFile;
+    lstat(FilePath, &SizeOfFile);
+
+    size = SizeOfFile.st_size;
 
     if (OpenFile==-1)
     {
@@ -87,7 +102,7 @@ int PackFile(char *FilePath, int OpenArchive, int depth, int size)
         return OpenArchive;
     }
 
-
+    write(OpenArchive, &depth, sizeof(int));
     write(OpenArchive, FilePath, MAXFILENAME);
     write(OpenArchive, &size, sizeof(int));
 

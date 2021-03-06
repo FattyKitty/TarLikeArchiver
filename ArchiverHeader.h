@@ -10,5 +10,5 @@
 #include <unistd.h>
 
 int Packing(char *FilePath, char* ArchiverPath, int depth);
-int PackFile(char *FilePath, int OpenArchive, int depth, int size);
+int PackFile(char *FilePath, int OpenArchive, int depth, char *FoldeName);
 int Unpacking(char *ArchivePath);
