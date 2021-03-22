@@ -69,9 +69,14 @@ int PackFile(char *FilePath, int OpenArchive, int depth, char *FolderName)
     }
 
     if (strcmp("", FolderName)==0)
-      write(OpenArchive, FilePath, MAXFILENAME);
+    {  if (write(OpenArchive, FilePath, MAXFILENAME)==-1)
+            printf("Error occured, some data has not been written\n");
+    }
     else
-        write(OpenArchive, FolderName, MAXFILENAME);
+    {
+        if(write(OpenArchive, FolderName, MAXFILENAME)==-1)
+            printf("Error occured,  some data has been lost due process\n");
+    }
 
 
     write(OpenArchive, &depth, sizeof(int));    //infomation about how deep file was held
